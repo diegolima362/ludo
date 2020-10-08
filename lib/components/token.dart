@@ -9,16 +9,13 @@ class Token {
   final Ludo game;
 
   Rect rect;
+  Color playerColor;
 
   Paint _fillPaint;
   Paint _strokePaint;
 
   Offset currentSpot;
   final Offset spawn;
-
-  Color playerColor;
-
-  int number;
 
   Size _screenSize;
 
@@ -37,8 +34,6 @@ class Token {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
       ..color = Colors.black;
-
-    number = 0;
   }
 
   void render(Canvas c) {
