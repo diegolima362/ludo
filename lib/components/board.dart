@@ -105,8 +105,8 @@ class Board {
 
   void _drawSpawnSpots(Canvas c, Rect innerHome, Color color) {
     _fillPaint.color = color;
-    double spotOffsetOne = innerHome.width / 4;
 
+    double spotOffsetOne = innerHome.width / 4;
     double spotRadius = _stepSize * .8;
 
     c.save();
@@ -117,6 +117,7 @@ class Board {
 
     for (int i = 0; i < _NUM_HOMES; i++) {
       final spot = Offset(spotOffsetOne, spotOffsetOne);
+
       c.drawCircle(spot, spotRadius, _fillPaint);
       c.drawCircle(spot, spotRadius, _strokePaint);
 
