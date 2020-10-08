@@ -1,1 +1,6 @@
 /gen/
+/build/
+/.dart_tool/
+/.flutter-plugins-dependencies
+/.flutter-plugins
+/.packages
