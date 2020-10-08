@@ -4,12 +4,17 @@ import 'package:flame/game.dart';
 import 'package:flame/gestures.dart';
 import 'package:flutter/material.dart';
 
+import 'components/components.dart';
 import 'util/util.dart';
 
 class Ludo extends Game with TapDetector {
   Size screenSize;
 
-  void initialize() async {}
+  Board _board;
+
+  void initialize() async {
+    _board = Board(this);
+  }
 
   Ludo() {
     initialize();
@@ -18,6 +23,7 @@ class Ludo extends Game with TapDetector {
   @override
   void render(Canvas c) {
     _drawBackground(c);
+    _board.render(c);
   }
 
   void _drawBackground(Canvas c) {
@@ -28,11 +34,14 @@ class Ludo extends Game with TapDetector {
   }
 
   @override
-  void update(double t) {}
+  void update(double t) {
+    _board.update(t);
+  }
 
   @override
   void resize(Size size) {
     screenSize = size;
+    _board.resize();
   }
 
   @override
