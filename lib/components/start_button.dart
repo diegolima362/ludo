@@ -23,6 +23,8 @@ class StartButton {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
       ..color = Colors.black;
+
+    resize();
   }
 
   void render(Canvas c) {

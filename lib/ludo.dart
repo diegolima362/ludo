@@ -83,7 +83,7 @@ class Ludo extends Game with TapDetector {
           homeId: i,
           spawn: spawns[k++],
           playerColor: AppColors.colors[i],
-          path: _board.paths,
+          path: _board.paths[i],
         ));
       }
     }
@@ -120,21 +120,25 @@ class Ludo extends Game with TapDetector {
       playerColor: AppColors.player1,
       tokens: _tokens.sublist(0, 4),
       name: 'Green',
+      id: 0,
     ));
     _players.add(Player(
       playerColor: AppColors.player1,
-      tokens: _tokens.sublist(4, 7),
+      tokens: _tokens.sublist(4, 8),
       name: 'Red',
+      id: 1,
     ));
     _players.add(Player(
       playerColor: AppColors.player1,
-      tokens: _tokens.sublist(8, 11),
+      tokens: _tokens.sublist(8, 12),
       name: 'Blue',
+      id: 2,
     ));
     _players.add(Player(
       playerColor: AppColors.player1,
-      tokens: _tokens.sublist(12, 15),
+      tokens: _tokens.sublist(12, 16),
       name: 'Yellow',
+      id: 3,
     ));
   }
 
@@ -142,6 +146,7 @@ class Ludo extends Game with TapDetector {
     if (_state == StateGame.playing) {
       _board.update(t);
       _dice.update(t);
+      _tokens.forEach((p) => p.update(t));
       // _scoreBoard.update(t);
     }
   }
@@ -156,7 +161,13 @@ class Ludo extends Game with TapDetector {
     if (_state == StateGame.menu) {
       _startButton?.resize();
     } else if (_state == StateGame.playing) {
-      _tokens.forEach((t) => t.resize());
+      for (Player p in _players) {
+        for (Token t in p.tokens) {
+          t.spawn = _board.spawnSpots[t.id];
+          t.path = _board.paths[t.homeId];
+          t.resize();
+        }
+      }
     }
   }
 
@@ -171,11 +182,10 @@ class Ludo extends Game with TapDetector {
         startGame();
       }
     } else if (_state == StateGame.playing) {
-      final p = _players[_currentPlayer];
+      final p = _players[1];
       for (Token t in p.tokens) {
         if (t.rect.contains(d.localPosition)) {
-          t.moveTo(74);
-
+          t.moveTo(33);
         }
       }
     }

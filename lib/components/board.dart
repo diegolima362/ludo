@@ -18,6 +18,8 @@ class Board {
   Map<int, Offset> safeSpots;
   Map<int, Offset> initialPositions;
 
+  Map<int, List<Offset>> paths;
+
   int currentPlayer;
 
   double _horizontalCenter;
@@ -40,6 +42,7 @@ class Board {
     homeSpots = Map<int, Offset>();
     spawnSpots = Map<int, Offset>();
     initialPositions = Map<int, Offset>();
+    paths = Map<int, List<Offset>>();
 
     _fillPaint = Paint();
 
@@ -50,8 +53,6 @@ class Board {
 
     _counter = 0;
   }
-
-  List<Offset> paths = List<Offset>();
 
   void render(Canvas c) {
     _fillPaint.color = Colors.white;
@@ -255,70 +256,88 @@ class Board {
     initialPositions[3] = Offset(x, y);
 
     paths.clear();
-    _calculateRoute(0);
+    _calculatePaths();
   }
 
-  void _calculateRoute(int id) {
-    paths.add(initialPositions[id]);
+  void _calculatePaths() {
+    paths[0] = List<Offset>();
+    paths[1] = List<Offset>();
+    paths[2] = List<Offset>();
+    paths[3] = List<Offset>();
+
+    paths[0].add(initialPositions[0]);
+    paths[1].add(initialPositions[1]);
+    paths[2].add(initialPositions[2]);
+    paths[3].add(initialPositions[3]);
 
     double x;
     double y;
-    x = initialPositions[id].dx;
-    y = initialPositions[id].dy;
 
-    x = _goRight(6, x, y);
+    // Player 1 path
+    x = initialPositions[0].dx;
+    y = initialPositions[0].dy;
 
-    paths.add(Offset(x += _stepSize, y -= _stepSize));
+    x = _moveRight(paths[0], 6, x, y);
 
-    y = _goUp(7, x, y);
-    x = _goRight(2, x, y);
-    y = _goDown(6, x, y);
+    paths[0].add(Offset(x += _stepSize, y -= _stepSize));
 
-    paths.add(Offset(x += _stepSize, y+=_stepSize));
+    y = _moveUp(paths[0], 7, x, y);
+    x = _moveRight(paths[0], 2, x, y);
+    y = _moveDown(paths[0], 7, x, y);
 
-    x = _goRight(7, x, y);
-    y = _goDown(1, x, y);
-    x = _goLeft(7, x, y);
+    paths[0].add(Offset(x += _stepSize, y += _stepSize));
 
-    paths.add(Offset(x -= _stepSize, y += _stepSize));
+    x = _moveRight(paths[0], 7, x, y);
+    y = _moveDown(paths[0], 2, x, y);
+    x = _moveLeft(paths[0], 7, x, y);
 
-    y = _goDown(6, x, y);
-    x = _goLeft(2, x, y);
-    y = _goUp(7, x, y);
+    paths[0].add(Offset(x -= _stepSize, y += _stepSize));
 
-    paths.add(Offset(x -= _stepSize, y -= _stepSize));
+    y = _moveDown(paths[0], 7, x, y);
+    x = _moveLeft(paths[0], 2, x, y);
+    y = _moveUp(paths[0], 7, x, y);
 
-    x = _goLeft(7, x, y);
-    y = _goUp(1, x, y);
-    x = _goRight(8, x, y);
+    paths[0].add(Offset(x -= _stepSize, y -= _stepSize));
+
+    x = _moveLeft(paths[0], 7, x, y);
+    y = _moveUp(paths[0], 1, x, y);
+    x = _moveRight(paths[0], 8, x, y);
+
+    // Player 2 path
+
+    paths[1].addAll(paths[0].sublist(18, paths[0].length - 9));
+    x = initialPositions[paths[1].length-1].dx;
+    y = initialPositions[paths[1].length-1].dy;
+    y = _moveUp(paths[1], 2, x, y);
+
+    paths[1].addAll(paths[0].sublist(0, 16));
+    y = _moveDown(paths[1], 8, x, y);
   }
 
-  double _goUp(int n, double x, double y) {
-    for (int i = 0; i <= n - 1; i++) {
-      paths.add(Offset(x, y -= _stepSize));
+  double _moveUp(List<Offset> list, int n, double x, double y) {
+    for (int i = 0; i < n; i++) {
+      list.add(Offset(x, y -= _stepSize));
     }
-
     return y;
   }
 
-  double _goDown(int n, double x, double y) {
-    for (int i = 0; i <= n; i++) {
-      paths.add(Offset(x, y += _stepSize));
+  double _moveDown(List<Offset> list, int n, double x, double y) {
+    for (int i = 0; i < n; i++) {
+      list.add(Offset(x, y += _stepSize));
     }
-
     return y;
   }
 
-  double _goLeft(int n, double x, double y) {
-    for (int i = 0; i <= n - 1; i++) {
-      paths.add(Offset(x -= _stepSize, y));
+  double _moveLeft(List<Offset> list, int n, double x, double y) {
+    for (int i = 0; i < n; i++) {
+      list.add(Offset(x -= _stepSize, y));
     }
     return x;
   }
 
-  double _goRight(int n, double x, double y) {
-    for (int i = 0; i <= n - 1; i++) {
-      paths.add(Offset(x += _stepSize, y));
+  double _moveRight(List<Offset> list, int n, double x, double y) {
+    for (int i = 0; i < n; i++) {
+      list.add(Offset(x += _stepSize, y));
     }
     return x;
   }

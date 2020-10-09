@@ -5,11 +5,13 @@ class Player {
   final List<Token> tokens;
   final Color playerColor;
   final String name;
+  final int id;
 
   Player({
     @required this.playerColor,
     @required this.tokens,
     @required this.name,
+    @required this.id,
   });
 
   bool get haveTokenInBase {
