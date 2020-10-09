@@ -11,13 +11,15 @@ import 'state.dart';
 import 'util/util.dart';
 
 class Ludo extends Game with TapDetector {
-  Size screenSize;
+  static const _START_NUMBER = 6;
 
+  Size screenSize;
 
   StateGame _state;
   StartButton _startButton;
 
   Board _board;
+
   // ScoreBoard _scoreBoard;
   Dice _dice;
 
@@ -63,8 +65,7 @@ class Ludo extends Game with TapDetector {
 
   void _drawBackground(Canvas c) {
     Rect background = Rect.fromLTWH(0, 0, screenSize.width, screenSize.height);
-    Paint backgroundPaint = Paint()
-      ..color = AppColors.backgroundColor;
+    Paint backgroundPaint = Paint()..color = AppColors.backgroundColor;
 
     c.drawRect(background, backgroundPaint);
   }
@@ -82,6 +83,7 @@ class Ludo extends Game with TapDetector {
           homeId: i,
           spawn: spawns[k++],
           playerColor: AppColors.colors[i],
+          path: _board.paths,
         ));
       }
     }
@@ -158,6 +160,8 @@ class Ludo extends Game with TapDetector {
     }
   }
 
+  bool c = false;
+
   void onTapDown(TapDownDetails d) {
     if (_state == StateGame.menu) {
       if (_startButton.checkClick(d.localPosition)) {
@@ -168,32 +172,39 @@ class Ludo extends Game with TapDetector {
       }
     } else if (_state == StateGame.playing) {
       final p = _players[_currentPlayer];
-      if (_dice.canRoll && _dice.checkClick(d.localPosition)) {
-        _dice.roll();
+      for (Token t in p.tokens) {
+        if (t.rect.contains(d.localPosition)) {
+          t.moveTo(74);
 
-        if (_dice.number != 6 && !p.haveTokenOutBase) {
-          _nextPlayer();
-        } else {
-          _dice.canRoll = false;
-          _shouldMove = true;
-        }
-      } else if (_shouldMove) {
-        for (Token t in p.tokens) {
-          if (t.rect.contains(d.localPosition)) {
-            if (t.isInBase && _dice.number == 6) {
-              t.moveTo(_board.initialPositions[t.homeId]);
-              _shouldMove = false;
-              _dice.canRoll = true;
-              break;
-            } else if (!t.isInBase) {
-              t.moveTo(Offset(_dice.number * 50.0, (_dice.number / 2) * 50.0));
-
-              _nextPlayer();
-              break;
-            }
-          }
         }
       }
     }
   }
 }
+
+// if (_dice.canRoll && _dice.checkClick(d.localPosition)) {
+// _dice.roll();
+//
+// if (_dice.number != _START_NUMBER && !p.haveTokenOutBase) {
+// _nextPlayer();
+// } else {
+// _dice.canRoll = false;
+// _shouldMove = true;
+// }
+// } else if (_shouldMove) {
+// for (Token t in p.tokens) {
+// if (t.rect.contains(d.localPosition)) {
+// if (t.isInBase && _dice.number == 6) {
+// t.moveTo(0);
+// _shouldMove = false;
+// _dice.canRoll = true;
+// break;
+// } else if (!t.isInBase) {
+// t.moveTo(_dice.number);
+//
+// _nextPlayer();
+// break;
+// }
+// }
+// }
+// }

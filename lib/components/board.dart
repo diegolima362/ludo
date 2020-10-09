@@ -13,6 +13,7 @@ class Board {
 
   final Ludo game;
 
+  Map<int, Offset> homeSpots;
   Map<int, Offset> spawnSpots;
   Map<int, Offset> safeSpots;
   Map<int, Offset> initialPositions;
@@ -36,6 +37,7 @@ class Board {
   double _counter;
 
   Board(this.game) {
+    homeSpots = Map<int, Offset>();
     spawnSpots = Map<int, Offset>();
     initialPositions = Map<int, Offset>();
 
@@ -48,6 +50,8 @@ class Board {
 
     _counter = 0;
   }
+
+  List<Offset> paths = List<Offset>();
 
   void render(Canvas c) {
     _fillPaint.color = Colors.white;
@@ -69,6 +73,9 @@ class Board {
   void _drawHomes(Canvas c) {
     final innerHomeSize = _homeSize - 2 * _stepSize;
 
+    int k = 0;
+    double spotRadius = _stepSize * .8;
+
     for (int i = 0; i < _NUM_HOMES; i++) {
       if (i == currentPlayer && _counter.toInt() == 1) {
         _fillPaint.color = AppColors.activeHome;
@@ -76,12 +83,8 @@ class Board {
         _fillPaint.color = AppColors.colors[i];
       }
 
-      _homeBorder = Rect.fromLTWH(
-        _horizontalCenter - _homeSize - (_pathSize / 2),
-        _verticalCenter - _homeSize - (_pathSize / 2),
-        _homeSize,
-        _homeSize,
-      );
+      _homeBorder =
+          Rect.fromLTWH(homeSpots[i].dx, homeSpots[i].dy, _homeSize, _homeSize);
       c.drawRect(_homeBorder, _fillPaint);
       c.drawRect(_homeBorder, _strokePaint);
 
@@ -95,36 +98,15 @@ class Board {
       c.drawRect(_innerHome, _fillPaint);
       c.drawRect(_innerHome, _strokePaint);
 
-      _drawSpawnSpots(c, _innerHome, AppColors.colors[i]);
+      _fillPaint.color = AppColors.colors[i];
 
-      c.translate(_verticalCenter, _verticalCenter);
-      c.rotate(pi / 2);
-      c.translate(-_horizontalCenter, -_horizontalCenter);
+      for (int i = 0; i < _NUM_HOMES; i++) {
+        final spot = spawnSpots[k++];
+
+        c.drawCircle(spot, spotRadius, _fillPaint);
+        c.drawCircle(spot, spotRadius, _strokePaint);
+      }
     }
-  }
-
-  void _drawSpawnSpots(Canvas c, Rect innerHome, Color color) {
-    _fillPaint.color = color;
-
-    double spotOffsetOne = innerHome.width / 4;
-    double spotRadius = _stepSize * .8;
-
-    c.save();
-    c.translate(
-      innerHome.left + 2 * spotOffsetOne,
-      2 * spotOffsetOne + innerHome.top,
-    );
-
-    for (int i = 0; i < _NUM_HOMES; i++) {
-      final spot = Offset(spotOffsetOne, spotOffsetOne);
-
-      c.drawCircle(spot, spotRadius, _fillPaint);
-      c.drawCircle(spot, spotRadius, _strokePaint);
-
-      c.rotate(pi / 2);
-    }
-
-    c.restore();
   }
 
   void _drawSteps(Canvas c) {
@@ -202,6 +184,26 @@ class Board {
     _horizontalCenter = _screenSize.width / 2;
     _verticalCenter = (_screenSize.height / 2) - 1.5 * _stepSize;
 
+    homeSpots[0] = Offset(
+      _horizontalCenter - _homeSize - (_pathSize / 2),
+      _verticalCenter - _homeSize - (_pathSize / 2),
+    );
+
+    homeSpots[1] = Offset(
+      _horizontalCenter + (_pathSize / 2),
+      _verticalCenter - _homeSize - (_pathSize / 2),
+    );
+
+    homeSpots[2] = Offset(
+      _horizontalCenter + (_pathSize / 2),
+      _verticalCenter + (_pathSize / 2),
+    );
+
+    homeSpots[3] = Offset(
+      _horizontalCenter - _homeSize - (_pathSize / 2),
+      _verticalCenter + (_pathSize / 2),
+    );
+
     final d = _homeSize - 2 * _stepSize;
     _homeBorder = Rect.fromLTWH(
       _horizontalCenter - _homeSize - (_pathSize / 2),
@@ -221,8 +223,8 @@ class Board {
 
     double x;
     double y;
-
     int k = 0;
+
     for (int i = 0; i < 4; i++) {
       x = _innerHome.center.dx +
           (i == 1 || i == 2 ? _homeSize + (2 * offset) : 0);
@@ -245,11 +247,80 @@ class Board {
 
     x = _horizontalCenter + _homeSize;
     y = _verticalCenter + _stepSize;
-    initialPositions[2] = Offset(x, y);
 
+    initialPositions[2] = Offset(x, y);
     x = _horizontalCenter - _stepSize;
+
     y = _verticalCenter + _homeSize;
     initialPositions[3] = Offset(x, y);
+
+    paths.clear();
+    _calculateRoute(0);
+  }
+
+  void _calculateRoute(int id) {
+    paths.add(initialPositions[id]);
+
+    double x;
+    double y;
+    x = initialPositions[id].dx;
+    y = initialPositions[id].dy;
+
+    x = _goRight(6, x, y);
+
+    paths.add(Offset(x += _stepSize, y -= _stepSize));
+
+    y = _goUp(7, x, y);
+    x = _goRight(2, x, y);
+    y = _goDown(6, x, y);
+
+    paths.add(Offset(x += _stepSize, y+=_stepSize));
+
+    x = _goRight(7, x, y);
+    y = _goDown(1, x, y);
+    x = _goLeft(7, x, y);
+
+    paths.add(Offset(x -= _stepSize, y += _stepSize));
+
+    y = _goDown(6, x, y);
+    x = _goLeft(2, x, y);
+    y = _goUp(7, x, y);
+
+    paths.add(Offset(x -= _stepSize, y -= _stepSize));
+
+    x = _goLeft(7, x, y);
+    y = _goUp(1, x, y);
+    x = _goRight(8, x, y);
+  }
+
+  double _goUp(int n, double x, double y) {
+    for (int i = 0; i <= n - 1; i++) {
+      paths.add(Offset(x, y -= _stepSize));
+    }
+
+    return y;
+  }
+
+  double _goDown(int n, double x, double y) {
+    for (int i = 0; i <= n; i++) {
+      paths.add(Offset(x, y += _stepSize));
+    }
+
+    return y;
+  }
+
+  double _goLeft(int n, double x, double y) {
+    for (int i = 0; i <= n - 1; i++) {
+      paths.add(Offset(x -= _stepSize, y));
+    }
+    return x;
+  }
+
+  double _goRight(int n, double x, double y) {
+    for (int i = 0; i <= n - 1; i++) {
+      paths.add(Offset(x += _stepSize, y));
+    }
+    return x;
   }
 
   void update(double t) {

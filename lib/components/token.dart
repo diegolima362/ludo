@@ -21,13 +21,19 @@ class Token {
 
   double _playerSize;
 
+  int _currentStep;
+
+  final List<Offset> path;
+
   Token({
     @required this.game,
     @required this.id,
     @required this.homeId,
     @required this.spawn,
     @required this.playerColor,
+    @required this.path,
   }) {
+    _currentStep = 0;
     currentSpot = spawn;
     _fillPaint = Paint();
     _strokePaint = Paint()
@@ -62,10 +68,8 @@ class Token {
 
   bool get isInBase => currentSpot == spawn;
 
-  void moveTo(Offset destination) {
-    print('hey');
-
-    currentSpot = destination;
+  void moveTo(int steps) {
+    currentSpot = path[_currentStep++];
   }
 
   void update(double t) {}
