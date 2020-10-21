@@ -304,14 +304,6 @@ class Board {
     x = _moveRight(paths[0], 8, x, y);
 
     // Player 2 path
-
-    paths[1].addAll(paths[0].sublist(18, paths[0].length - 9));
-    x = initialPositions[paths[1].length-1].dx;
-    y = initialPositions[paths[1].length-1].dy;
-    y = _moveUp(paths[1], 2, x, y);
-
-    paths[1].addAll(paths[0].sublist(0, 16));
-    y = _moveDown(paths[1], 8, x, y);
   }
 
   double _moveUp(List<Offset> list, int n, double x, double y) {

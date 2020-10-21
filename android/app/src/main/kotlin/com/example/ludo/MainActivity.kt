@@ -1,4 +1,4 @@
-package com.u362devs.ludo
+package com.example.ludo
 
 import io.flutter.embedding.android.FlutterActivity
 
