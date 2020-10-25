@@ -71,10 +71,11 @@ class Token {
 
   bool get isInBase => currentSpot == spawn;
 
+  int i = 0;
   void moveTo(int steps) {
     if (_currentStep < path.length) {
       // currentSpot = path[_currentStep++];
-      currentSpot = path[49];
+      currentSpot = path[i++];
     } else {
       atCenter = true;
     }

@@ -182,10 +182,10 @@ class Ludo extends Game with TapDetector {
         startGame();
       }
     } else if (_state == StateGame.playing) {
-      final p = _players[1];
+      final p = _players[3];
       for (Token t in p.tokens) {
         if (t.rect.contains(d.localPosition)) {
-          t.moveTo(33);
+          t.moveTo(22);
         }
       }
     }

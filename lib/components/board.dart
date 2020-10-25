@@ -273,7 +273,7 @@ class Board {
     double x;
     double y;
 
-    // Player 1 path
+    // Player 1 path (green)
     x = initialPositions[0].dx;
     y = initialPositions[0].dy;
 
@@ -303,7 +303,95 @@ class Board {
     y = _moveUp(paths[0], 1, x, y);
     x = _moveRight(paths[0], 8, x, y);
 
-    // Player 2 path
+    // Player 2 path (red)
+    x = initialPositions[1].dx;
+    y = initialPositions[1].dy;
+
+    y = _moveDown(paths[1], 6, x, y);
+
+    paths[1].add(Offset(x += _stepSize, y += _stepSize));
+
+    x = _moveRight(paths[1], 7, x, y);
+    y = _moveDown(paths[1], 2, x, y);
+    x = _moveLeft(paths[1], 7, x, y);
+
+    paths[1].add(Offset(x -= _stepSize, y += _stepSize));
+
+    y = _moveDown(paths[1], 7, x, y);
+    x = _moveLeft(paths[1], 2, x, y);
+    y = _moveUp(paths[1], 7, x, y);
+
+    paths[1].add(Offset(x -= _stepSize, y -= _stepSize));
+
+    x = _moveLeft(paths[1], 7, x, y);
+    y = _moveUp(paths[1], 2, x, y);
+    x = _moveRight(paths[1], 7, x, y);
+
+    paths[1].add(Offset(x += _stepSize, y -= _stepSize));
+
+    y = _moveUp(paths[1], 7, x, y);
+    x = _moveRight(paths[1], 1, x, y);
+    y = _moveDown(paths[1], 8, x, y);
+
+    // Player 3 path (blue)
+    x = initialPositions[2].dx;
+    y = initialPositions[2].dy;
+
+    x = _moveLeft(paths[2], 6, x, y);
+
+    paths[2].add(Offset(x -= _stepSize, y += _stepSize));
+
+    y = _moveDown(paths[2], 7, x, y);
+    x = _moveLeft(paths[2], 2, x, y);
+    y = _moveUp(paths[2], 7, x, y);
+
+    paths[2].add(Offset(x -= _stepSize, y -= _stepSize));
+
+    x = _moveLeft(paths[2], 7, x, y);
+    y = _moveUp(paths[2], 2, x, y);
+    x = _moveRight(paths[2], 7, x, y);
+
+    paths[2].add(Offset(x += _stepSize, y -= _stepSize));
+
+    y = _moveUp(paths[2], 7, x, y);
+    x = _moveRight(paths[2], 2, x, y);
+    y = _moveDown(paths[2], 7, x, y);
+
+    paths[2].add(Offset(x += _stepSize, y += _stepSize));
+
+    x = _moveRight(paths[2], 7, x, y);
+    y = _moveDown(paths[2], 1, x, y);
+    x = _moveLeft(paths[2], 8, x, y);
+
+    // Player 4 path (yellow)
+    x = initialPositions[3].dx;
+    y = initialPositions[3].dy;
+
+    y = _moveUp(paths[3], 6, x, y);
+
+    paths[3].add(Offset(x -= _stepSize, y -= _stepSize));
+
+    x = _moveLeft(paths[3], 7, x, y);
+    y = _moveUp(paths[3], 2, x, y);
+    x = _moveRight(paths[3], 7, x, y);
+
+    paths[3].add(Offset(x += _stepSize, y -= _stepSize));
+
+    y = _moveUp(paths[3], 7, x, y);
+    x = _moveRight(paths[3], 2, x, y);
+    y = _moveDown(paths[3], 7, x, y);
+
+    paths[3].add(Offset(x += _stepSize, y += _stepSize));
+
+    x = _moveRight(paths[3], 7, x, y);
+    y = _moveDown(paths[3], 2, x, y);
+    x = _moveLeft(paths[3], 7, x, y);
+
+    paths[3].add(Offset(x -= _stepSize, y += _stepSize));
+
+    y = _moveDown(paths[3], 7, x, y);
+    x = _moveLeft(paths[3], 1, x, y);
+    y = _moveUp(paths[3], 8, x, y);
   }
 
   double _moveUp(List<Offset> list, int n, double x, double y) {
