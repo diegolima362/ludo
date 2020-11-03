@@ -18,7 +18,7 @@ class AppColors {
 
   static Color get home4 => colors[3];
 
-  static Color get activeHome => Colors.purpleAccent;
+  static Color get activeHome => Colors.pink;
 
   static Color get player1 => colors[0];
 

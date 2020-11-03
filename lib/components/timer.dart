@@ -1,64 +1,62 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:ludo/util/util.dart';
 
 import '../ludo.dart';
-import '../util/util.dart';
 
-class Dice {
+class Timer {
   final Ludo game;
 
-  int number;
-  int diceMaxValue;
-
-  bool canRoll;
-
-  Random _rand;
+  int remainingTime;
 
   Rect _rect;
   Paint _fillPaint;
   Paint _strokePaint;
 
   Size _screenSize;
-  double _diceSize;
+  double _timerSize;
   double _fontSize;
   double _verticalCenter;
   double _horizontalCenter;
 
   double _counter;
 
-  Dice(this.game) {
+  int _timeLimit;
+
+  int lastPlayTime;
+
+  Timer(this.game) {
     _fillPaint = Paint();
     _strokePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
       ..color = Colors.black;
 
-    _rand = Random();
     _counter = 0;
+    _timeLimit = game.limitTime;
+    remainingTime = _timeLimit;
+  }
 
-    number = 0;
-    diceMaxValue = 10;
-    canRoll = false;
+  void reset() {
+    lastPlayTime = _counter.toInt();
+    _counter = 0;
+    remainingTime = _timeLimit;
   }
 
   void render(Canvas c) {
-    _fillPaint.color = Colors.white;
-    if (canRoll) {
-      _fillPaint.color =
-          _counter.toInt() == 1 ? AppColors.rollDice : Colors.white;
-    }
+    _fillPaint.color = remainingTime < 4 ? AppColors.rollDice : Colors.white;
 
     _rect = Rect.fromLTRB(
-      _horizontalCenter - (_diceSize / 2),
-      _screenSize.height - (1.2 * _diceSize),
-      _horizontalCenter + (_diceSize / 2),
-      _screenSize.height - (0.2 * _diceSize),
+      _horizontalCenter + 5 * _timerSize,
+      _screenSize.height - 3 * _timerSize,
+      _horizontalCenter + 6 * _timerSize,
+      _screenSize.height - 2 * _timerSize,
     );
 
-    final diceBorder = RRect.fromRectAndRadius(_rect, Radius.circular(20));
-    c.drawRRect(diceBorder, _fillPaint);
-    c.drawRRect(diceBorder, _strokePaint);
+    final timerBorder = RRect.fromRectAndRadius(_rect, Radius.circular(20));
+    c.drawRRect(timerBorder, _fillPaint);
+    c.drawRRect(timerBorder, _strokePaint);
 
     _fillPaint.color = Colors.black;
     final painter = TextPainter(
@@ -67,10 +65,10 @@ class Dice {
     );
 
     painter.text = TextSpan(
-      text: canRoll ? 'Jogar\nDado' : '$number',
+      text: '$remainingTime',
       style: TextStyle(
         color: Colors.black,
-        fontSize: canRoll ? 0.4 * _fontSize : _fontSize,
+        fontSize: _fontSize,
       ),
     );
 
@@ -88,11 +86,11 @@ class Dice {
     _screenSize = game.screenSize;
 
     if (_screenSize.aspectRatio > 1) {
-      _diceSize = _screenSize.height * 0.125;
-      _fontSize = _screenSize.height * 0.1;
+      _timerSize = _screenSize.height * 0.06;
+      _fontSize = _screenSize.height * 0.04;
     } else {
-      _diceSize = _screenSize.width * 0.125;
-      _fontSize = _screenSize.width * 0.1;
+      _timerSize = _screenSize.width * 0.06;
+      _fontSize = _screenSize.width * 0.04;
     }
 
     _horizontalCenter = _screenSize.width / 2;
@@ -104,13 +102,11 @@ class Dice {
   void update(double t) {
     _counter += t;
 
-    if (_counter >= 2) {
-      _counter -= 2;
+    if (_counter >= _timeLimit + 1) {
+      _counter -= _timeLimit;
     }
-  }
 
-  void roll() {
-    number = _rand.nextInt(diceMaxValue);
+    remainingTime = _timeLimit - _counter.toInt();
   }
 
   bool checkClick(Offset position) => _rect.contains(position);

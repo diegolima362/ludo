@@ -10,13 +10,17 @@ class Board {
   static const int _NUM_LINES = 3;
   static const int _NUM_HOMES = 4;
   static const int _SAFE_SPOT = 4;
+  static const int _SAFE_SPOT_INDEX = 10;
+
+  static const List<int> safeIndex = [1, 11, 28, 45, 62];
 
   final Ludo game;
 
   Map<int, Offset> homeSpots;
   Map<int, Offset> spawnSpots;
-  Map<int, Offset> safeSpots;
+  Map<int, Offset> finishSpots;
   Map<int, Offset> initialPositions;
+  List<Offset> safeSpots;
 
   Map<int, List<Offset>> paths;
 
@@ -41,8 +45,11 @@ class Board {
   Board(this.game) {
     homeSpots = Map<int, Offset>();
     spawnSpots = Map<int, Offset>();
+    finishSpots = Map<int, Offset>();
     initialPositions = Map<int, Offset>();
     paths = Map<int, List<Offset>>();
+
+    safeSpots = List<Offset>();
 
     _fillPaint = Paint();
 
@@ -78,11 +85,7 @@ class Board {
     double spotRadius = _stepSize * .8;
 
     for (int i = 0; i < _NUM_HOMES; i++) {
-      if (i == currentPlayer && _counter.toInt() == 1) {
-        _fillPaint.color = AppColors.activeHome;
-      } else {
-        _fillPaint.color = AppColors.colors[i];
-      }
+      _fillPaint.color = AppColors.colors[i];
 
       _homeBorder =
           Rect.fromLTWH(homeSpots[i].dx, homeSpots[i].dy, _homeSize, _homeSize);
@@ -256,6 +259,7 @@ class Board {
     initialPositions[3] = Offset(x, y);
 
     paths.clear();
+    safeSpots.clear();
     _calculatePaths();
   }
 
@@ -272,6 +276,7 @@ class Board {
 
     double x;
     double y;
+    int k = 0;
 
     // Player 1 path (green)
     x = initialPositions[0].dx;
@@ -301,7 +306,12 @@ class Board {
 
     x = _moveLeft(paths[0], 7, x, y);
     y = _moveUp(paths[0], 1, x, y);
-    x = _moveRight(paths[0], 8, x, y);
+    x = _moveRight(paths[0], 7, x, y);
+
+    finishSpots[k++] = Offset(x + 1.5 * _stepSize, y);
+    finishSpots[k++] = Offset(x + 0.8 * _stepSize, y);
+    finishSpots[k++] = Offset(x + 0.8 * _stepSize, y - 0.7 * _stepSize);
+    finishSpots[k++] = Offset(x + 0.8 * _stepSize, y + 0.7 * _stepSize);
 
     // Player 2 path (red)
     x = initialPositions[1].dx;
@@ -331,7 +341,12 @@ class Board {
 
     y = _moveUp(paths[1], 7, x, y);
     x = _moveRight(paths[1], 1, x, y);
-    y = _moveDown(paths[1], 8, x, y);
+    y = _moveDown(paths[1], 7, x, y);
+
+    finishSpots[k++] = Offset(x, y + 1.5 * _stepSize);
+    finishSpots[k++] = Offset(x, y + 0.8 * _stepSize);
+    finishSpots[k++] = Offset(x - 0.7 * _stepSize, y + 0.8 * _stepSize);
+    finishSpots[k++] = Offset(x + 0.7 * _stepSize, y + 0.8 * _stepSize);
 
     // Player 3 path (blue)
     x = initialPositions[2].dx;
@@ -361,7 +376,12 @@ class Board {
 
     x = _moveRight(paths[2], 7, x, y);
     y = _moveDown(paths[2], 1, x, y);
-    x = _moveLeft(paths[2], 8, x, y);
+    x = _moveLeft(paths[2], 7, x, y);
+
+    finishSpots[k++] = Offset(x - 1.5 * _stepSize, y);
+    finishSpots[k++] = Offset(x - 0.8 * _stepSize, y);
+    finishSpots[k++] = Offset(x - 0.8 * _stepSize, y - 0.7 * _stepSize);
+    finishSpots[k++] = Offset(x - 0.8 * _stepSize, y + 0.7 * _stepSize);
 
     // Player 4 path (yellow)
     x = initialPositions[3].dx;
@@ -391,7 +411,17 @@ class Board {
 
     y = _moveDown(paths[3], 7, x, y);
     x = _moveLeft(paths[3], 1, x, y);
-    y = _moveUp(paths[3], 8, x, y);
+    y = _moveUp(paths[3], 7, x, y);
+
+    finishSpots[k++] = Offset(x, y - 1.5 * _stepSize);
+    finishSpots[k++] = Offset(x, y - 0.8 * _stepSize);
+    finishSpots[k++] = Offset(x - 0.7 * _stepSize, y - 0.8 * _stepSize);
+    finishSpots[k++] = Offset(x + 0.7 * _stepSize, y - 0.8 * _stepSize);
+
+    for (int i = 0; i < _NUM_HOMES; i++) {
+      safeSpots.add(paths[i][_SAFE_SPOT_INDEX]);
+      safeSpots.add(paths[i][0]);
+    }
   }
 
   double _moveUp(List<Offset> list, int n, double x, double y) {
@@ -423,7 +453,7 @@ class Board {
   }
 
   void update(double t) {
-    _counter += 3 * t;
+    _counter += t;
 
     if (_counter >= 2) {
       _counter -= 2;
