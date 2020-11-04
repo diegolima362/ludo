@@ -1,0 +1,4 @@
+enum GameMode {
+  fast,
+  normal,
+}

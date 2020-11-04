@@ -83,23 +83,6 @@ class ScoreBoard {
     c.drawRRect(border, _fillPaint);
     c.drawRRect(border, _strokePaint);
 
-    painter.text = TextSpan(
-      text: 'Pontos: $score',
-      style: TextStyle(
-        color: Colors.black,
-        fontSize: .8 * _fontSize,
-      ),
-    );
-
-    painter.layout();
-
-    position = Offset(
-      _rect.center.dx - 0.6 * painter.width,
-      _rect.center.dy - painter.height / 2,
-    );
-
-    painter.paint(c, position);
-
     _rect = Rect.fromLTRB(
       _horizontalCenter + 2 * _scoreSize,
       _scoreSize * 0.25,
@@ -111,7 +94,7 @@ class ScoreBoard {
       text: 'Ultimo valor: $lastNumber',
       style: TextStyle(
         color: Colors.black,
-        fontSize: .8 * _fontSize,
+        fontSize: .6 * _fontSize,
       ),
     );
 

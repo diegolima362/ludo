@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flame/flame.dart';
@@ -6,16 +7,19 @@ import 'package:flame/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'components/components.dart';
+import 'game_mode.dart';
 import 'models/player.dart';
 import 'state.dart';
 import 'util/util.dart';
 
 class Ludo extends Game with TapDetector {
   static const _ALERT_TIME = 5;
+  static const _CPU_WAIT = 2;
 
   Size screenSize;
 
   StateGame _state;
+  GameMode _gameMode;
   StartButton _startButton;
 
   Board _board;
@@ -43,6 +47,12 @@ class Ludo extends Game with TapDetector {
   int _currentPlayMoves;
   int _currentPlayDiceSum;
 
+  String playerName;
+
+  double _counterTimer;
+
+  bool _cpuTurn;
+
   Ludo() {
     initialize();
   }
@@ -55,15 +65,22 @@ class Ludo extends Game with TapDetector {
     numPlayers = 4;
     limitTime = 10;
     useTimeLimit = false;
-    fastMode = true;
+    playerName = 'Jogador';
 
     _currentPlayer = 0;
     _currentPlayMoves = 0;
     _currentPlayDiceSum = 0;
 
+    _counterTimer = 0;
+    _cpuTurn = false;
+
     withPlayer = List<Offset>();
 
     _state = StateGame.menu;
+    _gameMode = GameMode.normal;
+
+    fastMode = _gameMode == GameMode.fast;
+
     _board = Board(this);
     _players = List<Player>();
     _dice = Dice(this);
@@ -76,7 +93,7 @@ class Ludo extends Game with TapDetector {
   }
 
   void startGame() {
-    _currentPlayer = 0;
+    _currentPlayer = fastMode ? 1 : 1;
     _currentPlayMoves = 0;
     _currentPlayDiceSum = 0;
 
@@ -103,7 +120,18 @@ class Ludo extends Game with TapDetector {
 
   void _nextPlayer() {
     _calculateCurrentPlayerScore();
-    _currentPlayer = (++_currentPlayer) % 4;
+
+    if (_cpuTurn) {
+      print('> end of cpu turn');
+    } else {
+      print('> end of player turn');
+    }
+
+    if (fastMode) {
+      _currentPlayer = (++_currentPlayer) % 4;
+    } else {
+      _currentPlayer = _currentPlayer == 3 ? 1 : 3;
+    }
 
     _scoreBoard.setInfo(
       playerColor: _players[_currentPlayer].playerColor,
@@ -125,42 +153,57 @@ class Ludo extends Game with TapDetector {
     _dice.canRoll = true;
     _timerPlay.reset();
     _timerDice.reset();
+
+    if (fastMode && _currentPlayer % 2 == 0) {
+      print('> cpu turn');
+      _cpuTurn = true;
+      _makeCPUMove();
+    } else if (_currentPlayer == 1) {
+      print('> cpu turn');
+      _cpuTurn = true;
+      _makeCPUMove();
+    } else {
+      print('> player turn');
+      _cpuTurn = false;
+    }
   }
 
   void _initPlayers() {
     _players.add(Player(
       playerColor: AppColors.player1,
       tokens: _tokens.sublist(0, 4),
-      name: 'Green',
+      name: 'CPU',
       id: 0,
     ));
     _players.add(Player(
       playerColor: AppColors.player2,
       tokens: _tokens.sublist(4, 8),
-      name: 'Red',
+      name: fastMode ? playerName : 'CPU',
       id: 1,
     ));
     _players.add(Player(
       playerColor: AppColors.player3,
       tokens: _tokens.sublist(8, 12),
-      name: 'Blue',
+      name: 'CPU',
       id: 2,
     ));
     _players.add(Player(
       playerColor: AppColors.player4,
       tokens: _tokens.sublist(12, 16),
-      name: 'Yellow',
+      name: playerName,
       id: 3,
     ));
   }
 
-  void _checkAtack(Offset o) {
+  void _checkAtack(Token t) {
     for (Player p in _players) {
       if (p.id != _currentPlayer) {
-        for (Token t in p.tokens) {
-          if (t.checkConflict(o)) {
-            if (!t.isSafe) {
-              t.backToBase();
+        for (Token t2 in p.tokens) {
+          if (t2.checkConflict(t.currentSpot)) {
+            if (!t2.isSafe) {
+              print(
+                  '> token ${t.colorName}:${t.id % 4} atacked token ${t2.colorName}:${t2.id % 4}');
+              t2.backToBase();
             }
           }
         }
@@ -169,15 +212,18 @@ class Ludo extends Game with TapDetector {
   }
 
   void _makeRandomMove() {
+    print('> random move');
     _players[_currentPlayer].closerToken.move(1);
     _nextPlayer();
   }
 
   void _calculateCurrentPlayerScore() {
     final p = _players[_currentPlayer == -1 ? 0 : _currentPlayer];
-    p.time += _timerPlay.remainingTime ?? 0 - _timerDice.remainingTime ?? 0;
     p.plays += _currentPlayMoves ?? 0;
     p.diceSum += _currentPlayDiceSum ?? 0;
+
+    if (useTimeLimit)
+      p.time += _timerPlay.remainingTime ?? 0 - _timerDice.remainingTime ?? 0;
   }
 
   void _drawBackground(Canvas c) {
@@ -197,6 +243,7 @@ class Ludo extends Game with TapDetector {
 
     for (int i = 0; i < 4; i++) {
       var _path = _board.paths[i];
+
       for (int j = 0; j < 4; j++) {
         _tokens.add(
           Token(
@@ -206,6 +253,7 @@ class Ludo extends Game with TapDetector {
             spawn: spawns[k],
             start: j == 3 && i == 0 || j + 1 % 4 == i ? _path[0] : null,
             playerColor: AppColors.colors[i],
+            colorName: AppColors.colorsNames[i],
             path: _path,
             finish: finish[k],
             playerId: i,
@@ -218,8 +266,26 @@ class Ludo extends Game with TapDetector {
     _tokens.forEach((p) => p.resize());
   }
 
-  void _handlePlay(TapDownDetails d) {
+  void testHandle(TapDownDetails d) {
+    _currentPlayer = 3;
+
     final p = _players[_currentPlayer];
+
+    _dice.number = 15;
+    for (Token t in p.tokens) {
+      if (t.checkClick(d.globalPosition) && t.checkMovement(_dice.number)) {
+        _makeMove(t);
+        return;
+      }
+    }
+  }
+
+  void _handlePlay(TapDownDetails d) {
+    // testHandle(d);
+    // return;
+
+    final p = _players[_currentPlayer];
+    final step = _dice.number == 0 ? 10 : _dice.number;
 
     if (_dice.canRoll && _dice.checkClick(d.localPosition)) {
       _dice.roll();
@@ -227,16 +293,13 @@ class Ludo extends Game with TapDetector {
       _currentPlayDiceSum += _dice.number;
       _shouldMove = true;
     } else if (_shouldMove) {
-      _dice.number = 1;
-      if (true) {
+      if (step == 10 || step == 9) {
         if (p.haveTokenOutBase || p.haveTokenInBase) {
           for (Token t in p.tokens) {
-            if (t.checkClick(d.globalPosition) &&
-                t.checkMovement(_dice.number)) {
+            if (t.checkClick(d.globalPosition) && t.checkMovement(step)) {
               _makeMove(t);
-              // t.backToBase();
-              // _shouldMove = false;
-              // _dice.canRoll = true;
+              _shouldMove = false;
+              _dice.canRoll = true;
               return;
             }
           }
@@ -244,10 +307,20 @@ class Ludo extends Game with TapDetector {
           _nextPlayer();
         }
       } else if (p.haveTokenOutBase) {
+        bool canMove = false;
+
+        for (Token t in p.tokens) {
+          if (!t.isInBase && t.checkMovement(step)) {
+            canMove = true;
+          }
+        }
+
+        if (!canMove) _nextPlayer();
+
         for (Token t in p.tokens) {
           if (t.checkClick(d.globalPosition) &&
               !t.isInBase &&
-              t.checkMovement(_dice.number)) {
+              t.checkMovement(step)) {
             _makeMove(t);
             // t.backToBase();
 
@@ -261,6 +334,53 @@ class Ludo extends Game with TapDetector {
     }
   }
 
+  void _makeCPUMove() {
+    _dice.roll();
+
+    final p = _players[_currentPlayer];
+
+    final step = _dice.number == 0 ? 10 : _dice.number;
+
+    if (step == 10 || step == 9) {
+      if (p.haveTokenInBase) {
+        for (Token t in p.tokens) {
+          if (t.isInBase && t.checkMovement(step)) {
+            _makeMove(t);
+            _makeCPUMove();
+            return;
+          }
+        }
+      } else if (p.haveTokenOutBase) {
+        if (p.closerToken.checkMovement(step)) {
+          _makeCPUMove();
+        } else {
+          for (Token t in p.tokens) {
+            if (!t.isInBase && t.checkMovement(step)) {
+              _makeMove(t);
+              _makeCPUMove();
+              return;
+            }
+          }
+          _nextPlayer();
+        }
+      } else {
+        _nextPlayer();
+      }
+    } else if (p.haveTokenOutBase) {
+      for (Token t in p.tokens) {
+        if (!t.isInBase && t.checkMovement(step)) {
+          _makeMove(t);
+          _nextPlayer();
+          return;
+        }
+      }
+    } else if (!p.haveTokenOutBase) {
+      _nextPlayer();
+    }
+
+    _nextPlayer();
+  }
+
   void _makeMove(Token t, {int steps}) {
     Offset position = t.currentSpot;
 
@@ -270,13 +390,16 @@ class Ludo extends Game with TapDetector {
 
     position = t.currentSpot;
 
-    if (_checkConflict(position)) _checkAtack(position);
+    if (_checkConflict(position)) _checkAtack(t);
 
     withPlayer.add(position);
 
-    if (Board.safeIndex.contains(t.currentStep)) t.isSafe = true;
+    if (Board.safeIndex.contains(t.currentStep)) {
+      t.isSafe = true;
+      print('> token ${t.id % 4} is in a safe spot');
+    }
 
-    if (t.atCenter && fastMode) winner = _players[t.playerId];
+    _checkWin();
   }
 
   bool _checkConflict(Offset o) {
@@ -286,6 +409,15 @@ class Ludo extends Game with TapDetector {
     }
 
     return false;
+  }
+
+  void _checkWin() {
+    final p = _players[_currentPlayer];
+    if (fastMode) {
+      if (p.tokens.firstWhere((t) => t.atCenter) != null) winner = p;
+    } else {
+      if (p.tokens.where((t) => t.atCenter).toList().length == 4) winner = p;
+    }
   }
 
   @override
@@ -299,18 +431,31 @@ class Ludo extends Game with TapDetector {
       _startButton.render(c);
     } else {
       _scoreBoard.render(c);
+
       _dice.render(c);
+
       if (useTimeLimit) {
         if (_shouldMove && _timerPlay.remainingTime < _ALERT_TIME)
           _timerPlay.render(c);
         if (_dice.canRoll && _timerDice.remainingTime <= _ALERT_TIME)
           _timerDice.render(c);
       }
-      _tokens.forEach((p) => p.render(c));
+      if (fastMode) {
+        _tokens.forEach((t) => t.render(c));
+      } else {
+        _players[1].tokens.forEach((p) => p.render(c));
+        _players[3].tokens.forEach((p) => p.render(c));
+      }
     }
   }
 
   void update(double t) {
+    _counterTimer += t;
+
+    if (_counterTimer > _CPU_WAIT) {
+      _counterTimer -= _CPU_WAIT;
+    }
+
     if (_state == StateGame.playing) {
       _board.update(t);
       _dice.update(t);

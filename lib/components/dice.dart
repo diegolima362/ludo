@@ -111,6 +111,7 @@ class Dice {
 
   void roll() {
     number = _rand.nextInt(diceMaxValue);
+    print('> dice value: $number');
   }
 
   bool checkClick(Offset position) => _rect.contains(position);

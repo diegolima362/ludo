@@ -241,21 +241,21 @@ class Board {
       spawnSpots[k++] = Offset(x - offset, y + offset);
     }
 
-    x = _horizontalCenter - _homeSize;
+    x = _horizontalCenter - _homeSize - _stepSize;
     y = _verticalCenter - _stepSize;
     initialPositions[0] = Offset(x, y);
 
     x = _horizontalCenter + _stepSize;
-    y = _verticalCenter - _homeSize;
+    y = _verticalCenter - _homeSize - _stepSize;
     initialPositions[1] = Offset(x, y);
 
-    x = _horizontalCenter + _homeSize;
+    x = _horizontalCenter + _homeSize + _stepSize;
     y = _verticalCenter + _stepSize;
 
     initialPositions[2] = Offset(x, y);
     x = _horizontalCenter - _stepSize;
 
-    y = _verticalCenter + _homeSize;
+    y = _verticalCenter + _homeSize + _stepSize;
     initialPositions[3] = Offset(x, y);
 
     paths.clear();
@@ -282,7 +282,7 @@ class Board {
     x = initialPositions[0].dx;
     y = initialPositions[0].dy;
 
-    x = _moveRight(paths[0], 6, x, y);
+    x = _moveRight(paths[0], 7, x, y);
 
     paths[0].add(Offset(x += _stepSize, y -= _stepSize));
 
@@ -317,7 +317,7 @@ class Board {
     x = initialPositions[1].dx;
     y = initialPositions[1].dy;
 
-    y = _moveDown(paths[1], 6, x, y);
+    y = _moveDown(paths[1], 7, x, y);
 
     paths[1].add(Offset(x += _stepSize, y += _stepSize));
 
@@ -352,7 +352,7 @@ class Board {
     x = initialPositions[2].dx;
     y = initialPositions[2].dy;
 
-    x = _moveLeft(paths[2], 6, x, y);
+    x = _moveLeft(paths[2], 7, x, y);
 
     paths[2].add(Offset(x -= _stepSize, y += _stepSize));
 
@@ -387,7 +387,7 @@ class Board {
     x = initialPositions[3].dx;
     y = initialPositions[3].dy;
 
-    y = _moveUp(paths[3], 6, x, y);
+    y = _moveUp(paths[3], 7, x, y);
 
     paths[3].add(Offset(x -= _stepSize, y -= _stepSize));
 
@@ -420,7 +420,7 @@ class Board {
 
     for (int i = 0; i < _NUM_HOMES; i++) {
       safeSpots.add(paths[i][_SAFE_SPOT_INDEX]);
-      safeSpots.add(paths[i][0]);
+      safeSpots.add(paths[i][1]);
     }
   }
 

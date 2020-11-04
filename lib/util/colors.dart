@@ -10,6 +10,8 @@ class AppColors {
     Colors.yellow,
   ];
 
+  static const List<String> colorsNames = ['green', 'red', 'blue', 'yellow'];
+
   static Color get home1 => colors[0];
 
   static Color get home2 => colors[1];

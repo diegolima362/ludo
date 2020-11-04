@@ -36,6 +36,8 @@ class Token {
 
   double _counter;
 
+  final String colorName;
+
   Token({
     @required this.game,
     @required this.id,
@@ -44,11 +46,12 @@ class Token {
     @required this.playerColor,
     @required this.path,
     @required this.playerId,
+    @required this.colorName,
     this.start,
     this.finish,
   }) {
     _counter = 0;
-    _currentStep = start != null ? 1 : 0;
+    _currentStep = start != null ? 0 : -1;
     currentSpot = start ?? spawn;
     atCenter = false;
     _fillPaint = Paint();
@@ -101,20 +104,33 @@ class Token {
   bool move(int steps) {
     if (atCenter) return false;
 
+    int last = _currentStep;
+
     if (isInBase) {
-      currentSpot = path[_currentStep++];
-      isSafe = true;
+      currentSpot = path[++_currentStep];
+
+      print('> move token ${id % 4} from home to $_currentStep');
+
       return true;
     } else if (_currentStep + steps <= path.length) {
       _currentStep += steps;
-      currentSpot = path[_currentStep - 1];
+
+      if (_currentStep == path.length) {
+        atCenter = true;
+        currentSpot = finish;
+      } else {
+        currentSpot = path[_currentStep];
+      }
+
       isSafe = false;
-      return true;
-    } else if (_currentStep == path.length) {
-      atCenter = true;
-      currentSpot = finish;
+
+      print(
+        '> move token ${id % 4} from $last to ${atCenter ? 'center' : _currentStep == -1 ? 'home' : _currentStep} ',
+      );
+
       return true;
     }
+
     return false;
   }
 
@@ -137,12 +153,12 @@ class Token {
       _stepSize = _screenSize.width * 0.035;
     }
 
-    if (_currentStep == 0) {
+    if (_currentStep == -1) {
       currentSpot = start ?? spawn;
     } else if (atCenter) {
       currentSpot = finish;
     } else {
-      currentSpot = path[_currentStep - 1];
+      currentSpot = path[_currentStep];
     }
   }
 
@@ -151,8 +167,10 @@ class Token {
   String toString() => "${this.playerColor.value}, ${this.currentSpot}";
 
   void backToBase() {
-    _currentStep = 0;
+    _currentStep = -1;
     currentSpot = start = spawn;
+
+    print('> token $colorName:${id % 4} goes back to home');
   }
 
   bool checkConflict(Offset o) {
@@ -163,7 +181,7 @@ class Token {
   bool get canMove => !atCenter;
 
   bool checkMovement(int steps) =>
-      canMove && _currentStep + steps <= path.length + 1;
+      canMove && _currentStep + steps <= path.length;
 
   bool checkClick(Offset o) => _rect.contains(o);
 }
