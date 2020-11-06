@@ -259,6 +259,7 @@ class Board {
     initialPositions[3] = Offset(x, y);
 
     paths.clear();
+    finishSpots.clear();
     safeSpots.clear();
     _calculatePaths();
   }

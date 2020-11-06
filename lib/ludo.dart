@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui';
 
 import 'package:flame/flame.dart';
@@ -64,8 +63,11 @@ class Ludo extends Game with TapDetector {
     activePlayers = 2;
     numPlayers = 4;
     limitTime = 10;
-    useTimeLimit = false;
+    useTimeLimit = true;
     playerName = 'Jogador';
+
+    _gameMode = GameMode.normal;
+    fastMode = _gameMode == GameMode.fast;
 
     _currentPlayer = 0;
     _currentPlayMoves = 0;
@@ -77,9 +79,6 @@ class Ludo extends Game with TapDetector {
     withPlayer = List<Offset>();
 
     _state = StateGame.menu;
-    _gameMode = GameMode.normal;
-
-    fastMode = _gameMode == GameMode.fast;
 
     _board = Board(this);
     _players = List<Player>();
@@ -154,11 +153,11 @@ class Ludo extends Game with TapDetector {
     _timerPlay.reset();
     _timerDice.reset();
 
-    if (fastMode && _currentPlayer % 2 == 0) {
+    if (fastMode && (_currentPlayer == 0 || _currentPlayer == 2)) {
       print('> cpu turn');
       _cpuTurn = true;
       _makeCPUMove();
-    } else if (_currentPlayer == 1) {
+    } else if (_currentPlayer == 1 && !fastMode) {
       print('> cpu turn');
       _cpuTurn = true;
       _makeCPUMove();
@@ -295,6 +294,16 @@ class Ludo extends Game with TapDetector {
     } else if (_shouldMove) {
       if (step == 10 || step == 9) {
         if (p.haveTokenOutBase || p.haveTokenInBase) {
+          bool canMove = false;
+
+          for (Token t in p.tokens) {
+            if (!t.isInBase && t.checkMovement(step)) {
+              canMove = true;
+            }
+          }
+
+          if (!canMove) _nextPlayer();
+
           for (Token t in p.tokens) {
             if (t.checkClick(d.globalPosition) && t.checkMovement(step)) {
               _makeMove(t);
@@ -414,7 +423,9 @@ class Ludo extends Game with TapDetector {
   void _checkWin() {
     final p = _players[_currentPlayer];
     if (fastMode) {
-      if (p.tokens.firstWhere((t) => t.atCenter) != null) winner = p;
+      for (Token t in p.tokens) {
+        if (t.atCenter) winner = p;
+      }
     } else {
       if (p.tokens.where((t) => t.atCenter).toList().length == 4) winner = p;
     }

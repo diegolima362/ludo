@@ -113,7 +113,7 @@ class ScoreBoard {
 
     if (_screenSize.aspectRatio > 1) {
       _scoreSize = _screenSize.height * 0.08;
-      _fontSize = _screenSize.height * 0.04;
+      _fontSize = _screenSize.height * 0.03;
     } else {
       _scoreSize = _screenSize.width * 0.1;
       _fontSize = _screenSize.width * 0.04;
