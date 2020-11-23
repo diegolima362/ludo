@@ -4,16 +4,15 @@ import 'package:flame/flame.dart';
 import 'package:flame/game.dart';
 import 'package:flame/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:ludo/components/exit_button.dart';
-import 'package:ludo/components/restart_game_button.dart';
-import 'package:ludo/views/winner_view.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
+import 'package:ludo/app/shared/models/score_register.dart';
+import 'package:ludo/app/shared/repositories/database.dart';
+import 'package:ludo/app/util/colors.dart';
 
-import '../components/components.dart';
+import 'components/components.dart';
 import 'game_mode.dart';
-import '../models/player.dart';
+import 'models/player.dart';
 import 'state.dart';
-import '../util/util.dart';
 
 class Ludo extends Game with TapDetector {
   static const _ALERT_TIME = 5;
@@ -22,7 +21,7 @@ class Ludo extends Game with TapDetector {
   Size screenSize;
 
   final BuildContext context;
-  final SharedPreferences storage;
+  final Database storage;
 
   StateGame state;
   final GameMode gameMode;
@@ -30,12 +29,12 @@ class Ludo extends Game with TapDetector {
 
   StartButton _startButton;
   ExitButton _exitButton;
-  RestartGameButton _restartButton;
+
+  // RestartGameButton _restartButton;
 
   Board _board;
-  List<Offset> withPlayer;
   ScoreBoard _scoreBoard;
-  WinnerView _winnerView;
+  WinnerDisplay _winnerDisplay;
   Dice _dice;
   Timer _timerPlay;
   Timer _timerDice;
@@ -51,16 +50,17 @@ class Ludo extends Game with TapDetector {
 
   int humanId;
   int numPlayers;
-  int activePlayers;
   bool fastMode;
   Player winner;
 
-  int _currentPlayMoves;
-  int _currentPlayDiceSum;
-
+  int _currentPlayMoves = 0;
+  int _currentPlayDiceSum = 0;
+  int _currentPlayAttacks = 0;
   double _counterTimer;
-
   bool _cpuTurn;
+
+  bool _moveByAttack = false;
+  bool _moveByReachCenter = false;
 
   Ludo(
       {@required this.context,
@@ -72,11 +72,14 @@ class Ludo extends Game with TapDetector {
     initialize();
   }
 
+  Player get currentPlayer => _players[_currentPlayer];
+
+  Color get currentPlayerColor => currentPlayer.playerColor;
+
   Future<void> initialize() async {
     resize(await Flame.util.initialDimensions());
 
     humanId = 3;
-    activePlayers = 2;
     numPlayers = 4;
 
     fastMode = gameMode == GameMode.fast;
@@ -88,12 +91,10 @@ class Ludo extends Game with TapDetector {
     _counterTimer = 0;
     _cpuTurn = false;
 
-    withPlayer = List<Offset>();
-
     state = StateGame.menu;
 
     _board = Board(this);
-    _winnerView = WinnerView(this);
+    _winnerDisplay = WinnerDisplay(this);
     _players = List<Player>();
     _dice = Dice(this);
     _timerPlay = Timer(this);
@@ -103,7 +104,7 @@ class Ludo extends Game with TapDetector {
     _scoreBoard = ScoreBoard(this);
     _startButton = StartButton(this);
     _exitButton = ExitButton(this);
-    _restartButton = RestartGameButton(this);
+    // _restartButton = RestartGameButton(this);
   }
 
   void startGame() {
@@ -121,68 +122,84 @@ class Ludo extends Game with TapDetector {
     _nextPlayer();
   }
 
-  void _restart() {
-    withPlayer.clear();
-    _players.clear();
-    _tokens.clear();
-
-    _timerPlay.reset();
-    _timerDice.reset();
-
+  void _restart() async {
     state = StateGame.menu;
   }
 
-  void _endGame() {
+  Future<void> _endGame() async {
+    if (winner.isHuman) {
+      int points = _calculateCurrentPlayerScore();
+
+      final date = DateFormat.MMMEd('pt_Br').format(DateTime.now());
+
+      final score = ScoreRegister(
+        gameMode: fastMode ? 'fast' : 'normal',
+        date: date,
+        name: winner.name,
+        score: points.toString(),
+      );
+
+      await storage.addScore(score);
+    }
+
     state = StateGame.winner;
   }
 
   void _nextPlayer() {
-    _calculateCurrentPlayerScore();
+    final nextTurn = !_moveByAttack && !_moveByReachCenter;
 
-    if (_cpuTurn) {
-      print('> end of cpu turn');
-    } else {
-      print('> end of player turn');
-    }
+    if (nextTurn) {
+      _calculateCurrentPlayerScore();
 
-    if (fastMode) {
-      _currentPlayer = (++_currentPlayer) % 4;
-    } else {
-      _currentPlayer = _currentPlayer == 3 ? 1 : 3;
-    }
+      _moveByAttack = false;
+      _moveByReachCenter = false;
 
-    _scoreBoard.setInfo(
-      playerColor: _players[_currentPlayer].playerColor,
-      playerName: _players[_currentPlayer].name,
-      lastNumber: _dice.number,
-      score: _players[_currentPlayer].score,
-    );
+      if (_cpuTurn) {
+        print('> end of cpu turn');
+      } else {
+        print('> end of player turn');
+      }
 
-    _board.currentPlayer = _currentPlayer;
-    _board.currentPlayer = _currentPlayer;
+      if (fastMode) {
+        _currentPlayer = (++_currentPlayer) % 4;
+      } else {
+        _currentPlayer = _currentPlayer == 3 ? 1 : 3;
+      }
 
-    _tokens.forEach((t) {
-      t.activePlayer = t.playerId == _currentPlayer;
-    });
+      _scoreBoard.setInfo(
+        playerColor: _players[_currentPlayer].playerColor,
+        playerName: _players[_currentPlayer].name,
+        lastNumber: _dice.number,
+        score: _players[_currentPlayer].score,
+      );
 
-    _currentPlayMoves = 0;
-    _currentPlayDiceSum = 0;
-    _shouldMove = false;
-    _dice.canRoll = true;
-    _timerPlay.reset();
-    _timerDice.reset();
+      _board.currentPlayer = _currentPlayer;
+      _board.currentPlayer = _currentPlayer;
 
-    if (fastMode && (_currentPlayer == 0 || _currentPlayer == 2)) {
-      print('> cpu turn');
-      _cpuTurn = true;
-      _makeCPUMove();
-    } else if (_currentPlayer == 1 && !fastMode) {
-      print('> cpu turn');
-      _cpuTurn = true;
-      _makeCPUMove();
-    } else {
-      print('> player turn');
-      _cpuTurn = false;
+      _tokens.forEach((t) {
+        t.activePlayer = t.playerId == _currentPlayer;
+      });
+
+      _currentPlayMoves = 0;
+      _currentPlayDiceSum = 0;
+      _currentPlayAttacks = 0;
+      _shouldMove = false;
+      _dice.canRoll = true;
+      _timerPlay.reset();
+      _timerDice.reset();
+
+      if (fastMode && (_currentPlayer == 0 || _currentPlayer == 2)) {
+        print('> cpu turn');
+        _cpuTurn = true;
+        _makeCPUMove();
+      } else if (_currentPlayer == 1 && !fastMode) {
+        print('> cpu turn');
+        _cpuTurn = true;
+        _makeCPUMove();
+      } else {
+        print('> player turn');
+        _cpuTurn = false;
+      }
     }
   }
 
@@ -191,48 +208,58 @@ class Ludo extends Game with TapDetector {
       playerColor: AppColors.player1,
       tokens: _tokens.sublist(0, 4),
       name: 'CPU',
+      isHuman: false,
       id: 0,
     ));
     _players.add(Player(
       playerColor: AppColors.player2,
       tokens: _tokens.sublist(4, 8),
       name: fastMode ? playerName : 'CPU',
+      isHuman: fastMode ? true : false,
       id: 1,
     ));
     _players.add(Player(
       playerColor: AppColors.player3,
       tokens: _tokens.sublist(8, 12),
       name: 'CPU',
+      isHuman: false,
       id: 2,
     ));
     _players.add(Player(
       playerColor: AppColors.player4,
       tokens: _tokens.sublist(12, 16),
       name: playerName,
+      isHuman: true,
       id: 3,
     ));
   }
 
-  void _checkAttack(Token t) {
+  bool _checkAttack(Token t) {
     for (Player p in _players) {
       if (p.id != _currentPlayer) {
-        if (fastMode && _sameTeam(p)) return;
         for (Token t2 in p.tokens) {
           if (t2.checkConflict(t.currentSpot)) {
-            if (!t2.isSafe) {
+            print('> prepare attack');
+            if (!t2.isSafe && !_sameTeam(p)) {
               print(
                   '> token ${t.colorName}:${t.id % 4} attacked token ${t2.colorName}:${t2.id % 4}');
               t2.backToBase();
+              _currentPlayAttacks++;
+              return true;
             }
+            print('> no attacked');
           }
         }
       }
     }
+
+    return false;
   }
 
   bool _sameTeam(Player p) {
-    return _currentPlayer % 2 == 0 && p.id % 2 == 0 ||
-        (_currentPlayer % 2 != 0 && p.id % 2 != 0);
+    return fastMode &&
+        (_currentPlayer % 2 == 0 && p.id % 2 == 0 ||
+            (_currentPlayer % 2 != 0 && p.id % 2 != 0));
   }
 
   void _makeRandomMove() {
@@ -241,13 +268,16 @@ class Ludo extends Game with TapDetector {
     _nextPlayer();
   }
 
-  void _calculateCurrentPlayerScore() {
+  int _calculateCurrentPlayerScore() {
     final p = _players[_currentPlayer == -1 ? 0 : _currentPlayer];
     p.plays += _currentPlayMoves ?? 0;
     p.diceSum += _currentPlayDiceSum ?? 0;
+    p.enemiesHit += _currentPlayAttacks ?? 0;
 
     if (useTimeLimit)
       p.time += _timerPlay.remainingTime ?? 0 - _timerDice.remainingTime ?? 0;
+
+    return p.score;
   }
 
   void _drawBackground(Canvas c) {
@@ -292,167 +322,222 @@ class Ludo extends Game with TapDetector {
 
   void testHandle(TapDownDetails d) {
     _currentPlayer = 3;
+    int steps = 10;
 
     final p = _players[_currentPlayer];
 
-    _dice.number = 15;
     for (Token t in p.tokens) {
-      if (t.checkClick(d.globalPosition) && t.checkMovement(_dice.number)) {
-        _makeMove(t);
+      if (t.checkClick(d.globalPosition) && t.checkMove(steps)) {
+        _makeMove(t, steps);
         return;
       }
     }
   }
 
   void _handlePlay(TapDownDetails d) {
-    // testHandle(d);
-    // return;
-
-    final p = _players[_currentPlayer];
-    final step = _dice.number == 0 ? 10 : _dice.number;
-
     if (_dice.canRoll && _dice.checkClick(d.localPosition)) {
-      _dice.roll();
-      _dice.canRoll = false;
-      _currentPlayDiceSum += _dice.number;
-      _shouldMove = true;
+      _rollDice();
     } else if (_shouldMove) {
-      if (step == 10 || step == 9) {
-        if (p.haveTokenOutBase || p.haveTokenInBase) {
-          bool canMove = false;
-
-          for (Token t in p.tokens) {
-            if (!t.isInBase && t.checkMovement(step)) {
-              canMove = true;
-            }
-          }
-
-          if (!canMove) _nextPlayer();
-
-          for (Token t in p.tokens) {
-            if (t.checkClick(d.globalPosition) && t.checkMovement(step)) {
-              _makeMove(t);
-              _shouldMove = false;
-              _dice.canRoll = true;
-              return;
-            }
-          }
-        } else {
-          _nextPlayer();
-        }
-      } else if (p.haveTokenOutBase) {
-        bool canMove = false;
-
-        for (Token t in p.tokens) {
-          if (!t.isInBase && t.checkMovement(step)) {
-            canMove = true;
-          }
-        }
-
-        if (!canMove) _nextPlayer();
-
-        for (Token t in p.tokens) {
-          if (t.checkClick(d.globalPosition) &&
-              !t.isInBase &&
-              t.checkMovement(step)) {
-            _makeMove(t);
-            // t.backToBase();
-
-            _nextPlayer();
-            return;
-          }
-        }
-      } else if (!p.haveTokenOutBase) {
-        _nextPlayer();
-      }
+      _makeHumanMove(d);
     }
   }
 
-  void _makeCPUMove() {
+  void _rollDice() {
     _dice.roll();
+    _dice.canRoll = false;
+
+    final steps = _dice.number == 0 ? 10 : _dice.number;
+
+    _currentPlayDiceSum += steps;
+    _shouldMove = true;
 
     final p = _players[_currentPlayer];
 
-    final step = _dice.number == 0 ? 10 : _dice.number;
+    p.tokens.forEach((e) {
+      if (e.isInBase) e.canLeaveBase = _dice.number == 0 || _dice.number == 9;
+    });
 
-    if (step == 10 || step == 9) {
-      if (p.haveTokenInBase) {
-        for (Token t in p.tokens) {
-          if (t.isInBase && t.checkMovement(step)) {
-            _makeMove(t);
-            _makeCPUMove();
-            return;
-          }
-        }
-      } else if (p.haveTokenOutBase) {
-        if (p.closerToken.checkMovement(step)) {
-          _makeCPUMove();
-        } else {
-          for (Token t in p.tokens) {
-            if (!t.isInBase && t.checkMovement(step)) {
-              _makeMove(t);
-              _makeCPUMove();
-              return;
-            }
-          }
-          _nextPlayer();
-        }
-      } else {
-        _nextPlayer();
-      }
-    } else if (p.haveTokenOutBase) {
-      for (Token t in p.tokens) {
-        if (!t.isInBase && t.checkMovement(step)) {
-          _makeMove(t);
+    if (!p.checkMovement(steps)) _nextPlayer();
+  }
+
+  void _makeHumanMove(TapDownDetails d) {
+    int steps;
+
+    if (_moveByAttack || _moveByReachCenter) {
+      steps = 10;
+      _bonusMove();
+    } else {
+      steps = _dice.number == 0 ? 10 : _dice.number;
+    }
+
+    final p = _players[_currentPlayer];
+
+    if (!p.checkMovement(steps)) {
+      _nextPlayer();
+      return;
+    }
+
+    for (Token t in p.tokens) {
+      if (t.checkClick(d.globalPosition)) {
+        if (t.isInBase && steps >= 9) {
+          _makeMove(t, steps);
+          _shouldMove = false;
+          _dice.canRoll = true;
+          return;
+        } else if (t.checkMove(steps)) {
+          _makeMove(t, steps);
           _nextPlayer();
           return;
         }
       }
-    } else if (!p.haveTokenOutBase) {
-      _nextPlayer();
     }
-
-    _nextPlayer();
   }
 
-  void _makeMove(Token t, {int steps}) {
-    Offset position = t.currentSpot;
+  void _bonusMove() {
+    _moveByReachCenter = false;
+    _moveByAttack = false;
+    _shouldMove = true;
+    _dice.canRoll = false;
+  }
 
-    withPlayer.remove(position);
+  void _makeCPUMove() {
+    print('> cpu move');
 
-    t.move(steps ?? _dice.number == 0 ? 10 : _dice.number);
+    int steps;
 
-    position = t.currentSpot;
+    if (_moveByAttack || _moveByReachCenter) {
+      steps = 10;
+      _bonusMove();
+    } else {
+      _dice.roll();
+      steps = _dice.number == 0 ? 10 : _dice.number;
+    }
 
-    if (_checkConflict(position)) _checkAttack(t);
+    final p = _players[_currentPlayer];
 
-    withPlayer.add(position);
+    if (!p.checkMovement(steps)) {
+      _nextPlayer();
+      return;
+    }
+
+    // se um pino consegue chegar ao centro
+    // esse pino deve ser priorizado
+    for (Token t in p.tokens) {
+      if (t.canReachCenter(steps)) {
+        _makeMove(t, steps);
+        _moveByReachCenter = true;
+        _makeCPUMove();
+        return;
+      }
+    }
+
+    // se um pino consegue atacar um pino
+    // adversario, a cpu deve fazer o ataque
+    for (Token t in p.tokens) {
+      if (!t.isInBase && t.checkMove(steps)) {
+        for (Player p2 in _players) {
+          if (p2.id != _currentPlayer && !_sameTeam(p2)) {
+            for (Token t2 in p2.tokens) {
+              if (t2.checkConflict(t.futurePosition(steps))) {
+                _makeMove(t, steps);
+                if (_moveByReachCenter || _moveByAttack)
+                  _makeCPUMove();
+                else
+                  _nextPlayer();
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // se tiver algum pino em base, mova primeiro que puder
+    if (steps >= 9) {
+      if (p.haveTokenInBase) {
+        for (Token t in p.tokens) {
+          if (t.isInBase) {
+            _makeMove(t, steps);
+            _makeCPUMove();
+            return;
+          }
+        }
+      }
+    }
+
+    if (p.haveMovableToken) {
+      if (!p.checkMovement(steps)) _nextPlayer();
+
+      // se o pino mais avancado puder mover os passos
+      // ele deve ser priorizado
+      if (p.closerToken.checkMove(steps)) {
+        _makeMove(p.closerToken, steps);
+        if (_moveByReachCenter || _moveByAttack)
+          _makeCPUMove();
+        else
+          _nextPlayer();
+
+        return;
+      } else {
+        for (Token t in p.tokens) {
+          if (t.checkMove(steps)) {
+            _makeMove(t, steps);
+            if (_moveByReachCenter || _moveByAttack)
+              _makeCPUMove();
+            else
+              _nextPlayer();
+            return;
+          }
+        }
+      }
+    } else {
+      _nextPlayer();
+      return;
+    }
+  }
+
+  void _makeMove(Token t, int steps) {
+    t.move(steps);
+    if (t.atCenter && !fastMode) {
+      _moveByReachCenter = true;
+      print('> move by reach center');
+    } else {
+      _moveByReachCenter = false;
+    }
+
+    // if (_checkConflict(position)) {
+    //   print('> conflict');
+    if (_checkAttack(t)) {
+      _moveByAttack = true;
+      print('> move by attack');
+    } else {
+      _moveByAttack = false;
+      print('> no attack');
+    }
+    // }
 
     if (Board.safeIndex.contains(t.currentStep)) {
       t.isSafe = true;
       print('> token ${t.id % 4} is in a safe spot');
     }
 
+    _currentPlayMoves++;
     _checkWin();
-  }
-
-  bool _checkConflict(Offset o) {
-    for (Offset a in withPlayer) {
-      if (a.dx.floorToDouble() == o.dx.floorToDouble() &&
-          a.dy.floorToDouble() == o.dy.floorToDouble()) return true;
-    }
-
-    return false;
   }
 
   void _checkWin() {
     final p = _players[_currentPlayer];
     if (fastMode) {
       for (Token t in p.tokens) {
-        if (t.atCenter) winner = p;
+        if (t.atCenter) {
+          winner = p;
+          print('> winner : $p');
+        }
       }
     } else {
-      if (p.tokens.where((t) => t.atCenter).toList().length == 4) winner = p;
+      if (p.tokens.where((t) => t.atCenter).toList().length == 4) {
+        winner = p;
+        print('> winner : $p');
+      }
     }
   }
 
@@ -466,8 +551,8 @@ class Ludo extends Game with TapDetector {
     _exitButton.render(c);
 
     if (state == StateGame.winner) {
-      _winnerView.render(c);
-      _startButton.render(c);
+      _winnerDisplay.render(c);
+      _exitButton.render(c);
     } else {
       _board.render(c);
 
@@ -476,7 +561,7 @@ class Ludo extends Game with TapDetector {
       if (state == StateGame.menu) {
         _startButton.render(c);
       } else {
-        _restartButton.render(c);
+        // _restartButton.render(c);
         _scoreBoard.render(c);
 
         _dice.render(c);
@@ -520,7 +605,7 @@ class Ludo extends Game with TapDetector {
         }
       }
 
-      if (state == StateGame.winner) _winnerView.update(t);
+      if (state == StateGame.winner) _winnerDisplay.update(t);
 
       _tokens.forEach((p) => p.update(t));
       _scoreBoard.update(t);
@@ -540,13 +625,11 @@ class Ludo extends Game with TapDetector {
     _timerPlay?.resize();
     _timerDice?.resize();
     _exitButton?.resize();
+    _startButton?.resize();
+    _winnerDisplay?.resize();
 
-    if (state == StateGame.menu) {
-      _startButton?.resize();
-    } else if (state == StateGame.winner) {
-      _winnerView?.resize();
-    } else if (state == StateGame.playing) {
-      _restartButton.resize();
+    if (state == StateGame.playing) {
+      // _restartButton.resize();
       for (Player p in _players) {
         for (Token t in p.tokens) {
           t.spawn = _board.spawnSpots[t.id];
@@ -563,8 +646,8 @@ class Ludo extends Game with TapDetector {
     }
 
     if (state == StateGame.winner) {
-      if (_startButton.checkClick(d.localPosition)) {
-        _restart();
+      if (_exitButton.checkClick(d.localPosition)) {
+        state = StateGame.menu;
       }
     } else if (state == StateGame.menu) {
       if (_startButton.checkClick(d.localPosition)) {
@@ -573,11 +656,14 @@ class Ludo extends Game with TapDetector {
         startGame();
       }
     } else if (state == StateGame.playing) {
-      if (_restartButton.checkClick(d.localPosition)) {
-        _restart();
-      } else {
-        _handlePlay(d);
-      }
+      _handlePlay(d);
+      // if (_restartButton.checkClick(d.localPosition)) {
+      //   _shouldMove = false;
+      //   _dice.canRoll = true;
+      //   startGame();
+      // } else {
+      //   _handlePlay(d);
+      // }
     }
   }
 }

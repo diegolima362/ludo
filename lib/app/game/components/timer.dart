@@ -1,6 +1,5 @@
-
 import 'package:flutter/material.dart';
-import 'package:ludo/util/util.dart';
+import 'package:ludo/app/util/colors.dart';
 
 import '../ludo.dart';
 
@@ -16,7 +15,6 @@ class Timer {
   Size _screenSize;
   double _timerSize;
   double _fontSize;
-  double _verticalCenter;
   double _horizontalCenter;
 
   double _counter;
@@ -93,7 +91,6 @@ class Timer {
     }
 
     _horizontalCenter = _screenSize.width / 2;
-    _verticalCenter = _screenSize.height / 2;
   }
 
   void onTapDown() {}

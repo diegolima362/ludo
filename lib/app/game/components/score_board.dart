@@ -16,10 +16,8 @@ class ScoreBoard {
   Size _screenSize;
   double _scoreSize;
   double _fontSize;
-  double _verticalCenter;
   double _horizontalCenter;
 
-  double _counter;
 
   int score;
 
@@ -30,7 +28,6 @@ class ScoreBoard {
       ..strokeWidth = 1.5
       ..color = Colors.black;
 
-    _counter = 0;
   }
 
   void render(Canvas c) {
@@ -120,13 +117,11 @@ class ScoreBoard {
     }
 
     _horizontalCenter = _screenSize.width / 2;
-    _verticalCenter = _screenSize.height / 2;
   }
 
   void onTapDown() {}
 
   void update(double t) {
-    _counter += t;
   }
 
   bool checkClick(Offset position) => _rect.contains(position);

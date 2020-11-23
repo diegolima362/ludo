@@ -1,15 +1,16 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:ludo/app/util/colors.dart';
 
 import '../ludo.dart';
-import '../util/util.dart';
 
 class Dice {
   final Ludo game;
 
   int number;
   int diceMaxValue;
+  String text;
 
   bool canRoll;
 
@@ -22,7 +23,6 @@ class Dice {
   Size _screenSize;
   double _diceSize;
   double _fontSize;
-  double _verticalCenter;
   double _horizontalCenter;
 
   double _counter;
@@ -39,6 +39,7 @@ class Dice {
 
     number = 0;
     diceMaxValue = 10;
+    text = '';
     canRoll = false;
   }
 
@@ -96,7 +97,6 @@ class Dice {
     }
 
     _horizontalCenter = _screenSize.width / 2;
-    _verticalCenter = _screenSize.height / 2;
   }
 
   void onTapDown() {}

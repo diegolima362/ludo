@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../ludo.dart';
 
-class StartButton {
+class ExitButton {
   final Ludo game;
 
   Rect _rect;
+
   Paint _fillPaint;
   Paint _strokePaint;
 
@@ -16,7 +17,7 @@ class StartButton {
 
   double _horizontalCenter;
 
-  StartButton(this.game) {
+  ExitButton(this.game) {
     _fillPaint = Paint();
     _strokePaint = Paint()
       ..style = PaintingStyle.stroke
@@ -30,13 +31,13 @@ class StartButton {
     _fillPaint.color = Colors.white;
 
     _rect = Rect.fromLTRB(
-      _horizontalCenter - _boxSize,
-      _screenSize.height - (1.2 * _boxSize),
-      _horizontalCenter + _boxSize,
-      _screenSize.height - (0.2 * _boxSize),
+      _horizontalCenter - 6 * _boxSize,
+      _screenSize.height - 1.9 * _boxSize,
+      _horizontalCenter - 4 * _boxSize,
+      _screenSize.height - _boxSize,
     );
 
-    final border = RRect.fromRectAndRadius(_rect, Radius.circular(20));
+    final border = RRect.fromRectAndRadius(_rect, Radius.circular(10));
     c.drawRRect(border, _fillPaint);
     c.drawRRect(border, _strokePaint);
 
@@ -47,7 +48,7 @@ class StartButton {
     );
 
     painter.text = TextSpan(
-      text: 'Start',
+      text: 'Sair',
       style: TextStyle(
         color: Colors.black,
         fontSize: _fontSize,
@@ -68,11 +69,11 @@ class StartButton {
     _screenSize = game.screenSize;
 
     if (_screenSize.aspectRatio > 1) {
-      _boxSize = _screenSize.height * 0.125;
-      _fontSize = _screenSize.height * 0.1;
+      _boxSize = _screenSize.height * 0.06;
+      _fontSize = _screenSize.height * 0.03;
     } else {
-      _boxSize = _screenSize.width * 0.125;
-      _fontSize = _screenSize.width * 0.1;
+      _boxSize = _screenSize.width * 0.06;
+      _fontSize = _screenSize.width * 0.03;
     }
 
     _horizontalCenter = _screenSize.width / 2;

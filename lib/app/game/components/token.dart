@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ludo/util/colors.dart';
+import 'package:ludo/app/util/colors.dart';
 
 import '../ludo.dart';
 
@@ -13,6 +13,8 @@ class Token {
   bool atCenter;
   bool isSafe = false;
   bool activePlayer = false;
+  bool canLeaveBase = false;
+  final String colorName;
 
   List<Offset> path;
 
@@ -36,24 +38,22 @@ class Token {
 
   double _counter;
 
-  final String colorName;
-
   Token({
-    @required this.game,
     @required this.id,
+    @required this.playerId,
     @required this.homeId,
+    @required this.colorName,
+    @required this.game,
     @required this.spawn,
     @required this.playerColor,
     @required this.path,
-    @required this.playerId,
-    @required this.colorName,
     this.start,
     this.finish,
   }) {
     _counter = 0;
+    atCenter = false;
     _currentStep = start != null ? 0 : -1;
     currentSpot = start ?? spawn;
-    atCenter = false;
     _fillPaint = Paint();
     _strokePaint = Paint()
       ..style = PaintingStyle.stroke
@@ -65,10 +65,15 @@ class Token {
 
   int get currentStep => _currentStep;
 
+  bool get isInBase => currentSpot == spawn;
+
   void render(Canvas c) {
     _fillPaint.color = playerColor;
 
-    if (!isInBase && !atCenter && activePlayer && _counter.toInt() == 1) {
+    if ((!isInBase || canLeaveBase) &&
+        !atCenter &&
+        activePlayer &&
+        _counter.toInt() == 1) {
       final step = Rect.fromLTWH(
         currentSpot.dx - _stepSize / 2,
         currentSpot.dy - _stepSize / 2,
@@ -99,8 +104,6 @@ class Token {
     // c.drawRect(rect, _fillPaint);
   }
 
-  bool get isInBase => currentSpot == spawn;
-
   bool move(int steps) {
     if (atCenter) return false;
 
@@ -109,7 +112,7 @@ class Token {
     if (isInBase) {
       currentSpot = path[++_currentStep];
 
-      print('> move token ${id % 4} from home to $_currentStep');
+      print('> move token:$colorName:${id % 4} from home to $_currentStep');
 
       return true;
     } else if (_currentStep + steps <= path.length) {
@@ -125,7 +128,7 @@ class Token {
       isSafe = false;
 
       print(
-        '> move token ${id % 4} from $last to ${atCenter ? 'center' : _currentStep == -1 ? 'home' : _currentStep} ',
+        '> move token $colorName:${id % 4} from $last to ${atCenter ? 'center' : _currentStep == -1 ? 'home' : _currentStep} ',
       );
 
       return true;
@@ -174,14 +177,28 @@ class Token {
   }
 
   bool checkConflict(Offset o) {
-    return currentSpot.dx.floorToDouble() == o.dx.floorToDouble() &&
-        currentSpot.dy.floorToDouble() == o.dy.floorToDouble();
+    if (o == null)
+      return false;
+    else
+      return currentSpot.dx.floorToDouble() == o.dx.floorToDouble() &&
+          currentSpot.dy.floorToDouble() == o.dy.floorToDouble();
   }
 
   bool get canMove => !atCenter;
 
-  bool checkMovement(int steps) =>
-      canMove && _currentStep + steps <= path.length;
+  bool checkMove(int steps) =>
+      canMove &&
+      ((isInBase && steps >= 9) || !isInBase) &&
+      _currentStep + steps <= path.length;
 
   bool checkClick(Offset o) => _rect.contains(o);
+
+  bool canReachCenter(int steps) => _currentStep + steps == path.length;
+
+  Offset futurePosition(int steps) {
+    if (_currentStep + steps < path.length)
+      return path[_currentStep + steps];
+    else
+      return null;
+  }
 }

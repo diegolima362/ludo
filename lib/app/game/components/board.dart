@@ -1,9 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:ludo/app/util/colors.dart';
 
 import '../ludo.dart';
-import '../util/util.dart';
 
 class Board {
   static const int _PATH_LENGTH = 8;
