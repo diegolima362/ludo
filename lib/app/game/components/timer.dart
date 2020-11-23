@@ -33,7 +33,7 @@ class Timer {
       ..color = Colors.black;
 
     _counter = 0;
-    _timeLimit = game.limitTime;
+    _timeLimit = game.timeLimit;
     remainingTime = _timeLimit;
   }
 

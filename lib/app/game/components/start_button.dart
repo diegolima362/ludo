@@ -16,6 +16,7 @@ class StartButton {
   double _fontSize;
 
   double _horizontalCenter;
+  double _verticalCenter;
 
   StartButton(this.game) {
     _fillPaint = Paint();

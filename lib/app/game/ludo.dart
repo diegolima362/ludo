@@ -4,12 +4,16 @@ import 'package:flame/flame.dart';
 import 'package:flame/game.dart';
 import 'package:flame/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:ludo/components/exit_button.dart';
+import 'package:ludo/components/restart_game_button.dart';
+import 'package:ludo/views/winner_view.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'components/components.dart';
+import '../components/components.dart';
 import 'game_mode.dart';
-import 'models/player.dart';
+import '../models/player.dart';
 import 'state.dart';
-import 'util/util.dart';
+import '../util/util.dart';
 
 class Ludo extends Game with TapDetector {
   static const _ALERT_TIME = 5;
@@ -17,13 +21,21 @@ class Ludo extends Game with TapDetector {
 
   Size screenSize;
 
-  StateGame _state;
-  GameMode _gameMode;
+  final BuildContext context;
+  final SharedPreferences storage;
+
+  StateGame state;
+  final GameMode gameMode;
+  final String playerName;
+
   StartButton _startButton;
+  ExitButton _exitButton;
+  RestartGameButton _restartButton;
 
   Board _board;
   List<Offset> withPlayer;
   ScoreBoard _scoreBoard;
+  WinnerView _winnerView;
   Dice _dice;
   Timer _timerPlay;
   Timer _timerDice;
@@ -34,40 +46,40 @@ class Ludo extends Game with TapDetector {
   bool _shouldMove;
   int _currentPlayer;
 
+  final bool useTimeLimit;
+  final int timeLimit;
+
   int humanId;
   int numPlayers;
   int activePlayers;
-  bool useTimeLimit;
-  int limitTime;
   bool fastMode;
-
   Player winner;
 
   int _currentPlayMoves;
   int _currentPlayDiceSum;
 
-  String playerName;
-
   double _counterTimer;
 
   bool _cpuTurn;
 
-  Ludo() {
+  Ludo(
+      {@required this.context,
+      @required this.storage,
+      this.useTimeLimit = false,
+      this.timeLimit = 10,
+      this.gameMode = GameMode.normal,
+      this.playerName}) {
     initialize();
   }
 
-  void initialize() async {
+  Future<void> initialize() async {
     resize(await Flame.util.initialDimensions());
 
     humanId = 3;
     activePlayers = 2;
     numPlayers = 4;
-    limitTime = 10;
-    useTimeLimit = true;
-    playerName = 'Jogador';
 
-    _gameMode = GameMode.normal;
-    fastMode = _gameMode == GameMode.fast;
+    fastMode = gameMode == GameMode.fast;
 
     _currentPlayer = 0;
     _currentPlayMoves = 0;
@@ -78,9 +90,10 @@ class Ludo extends Game with TapDetector {
 
     withPlayer = List<Offset>();
 
-    _state = StateGame.menu;
+    state = StateGame.menu;
 
     _board = Board(this);
+    _winnerView = WinnerView(this);
     _players = List<Player>();
     _dice = Dice(this);
     _timerPlay = Timer(this);
@@ -89,6 +102,8 @@ class Ludo extends Game with TapDetector {
 
     _scoreBoard = ScoreBoard(this);
     _startButton = StartButton(this);
+    _exitButton = ExitButton(this);
+    _restartButton = RestartGameButton(this);
   }
 
   void startGame() {
@@ -98,7 +113,7 @@ class Ludo extends Game with TapDetector {
 
     winner = null;
 
-    _state = StateGame.playing;
+    state = StateGame.playing;
 
     _initPlayers();
 
@@ -106,7 +121,7 @@ class Ludo extends Game with TapDetector {
     _nextPlayer();
   }
 
-  void _endGame() {
+  void _restart() {
     withPlayer.clear();
     _players.clear();
     _tokens.clear();
@@ -114,7 +129,11 @@ class Ludo extends Game with TapDetector {
     _timerPlay.reset();
     _timerDice.reset();
 
-    _state = StateGame.menu;
+    state = StateGame.menu;
+  }
+
+  void _endGame() {
+    state = StateGame.winner;
   }
 
   void _nextPlayer() {
@@ -194,20 +213,26 @@ class Ludo extends Game with TapDetector {
     ));
   }
 
-  void _checkAtack(Token t) {
+  void _checkAttack(Token t) {
     for (Player p in _players) {
       if (p.id != _currentPlayer) {
+        if (fastMode && _sameTeam(p)) return;
         for (Token t2 in p.tokens) {
           if (t2.checkConflict(t.currentSpot)) {
             if (!t2.isSafe) {
               print(
-                  '> token ${t.colorName}:${t.id % 4} atacked token ${t2.colorName}:${t2.id % 4}');
+                  '> token ${t.colorName}:${t.id % 4} attacked token ${t2.colorName}:${t2.id % 4}');
               t2.backToBase();
             }
           }
         }
       }
     }
+  }
+
+  bool _sameTeam(Player p) {
+    return _currentPlayer % 2 == 0 && p.id % 2 == 0 ||
+        (_currentPlayer % 2 != 0 && p.id % 2 != 0);
   }
 
   void _makeRandomMove() {
@@ -399,7 +424,7 @@ class Ludo extends Game with TapDetector {
 
     position = t.currentSpot;
 
-    if (_checkConflict(position)) _checkAtack(t);
+    if (_checkConflict(position)) _checkAttack(t);
 
     withPlayer.add(position);
 
@@ -431,31 +456,43 @@ class Ludo extends Game with TapDetector {
     }
   }
 
+  void _exit() {
+    Navigator.pop(context);
+  }
+
   @override
   void render(Canvas c) {
     _drawBackground(c);
-    _board.render(c);
+    _exitButton.render(c);
 
-    if (_tokens.isEmpty) _initTokens();
-
-    if (_state == StateGame.menu) {
+    if (state == StateGame.winner) {
+      _winnerView.render(c);
       _startButton.render(c);
     } else {
-      _scoreBoard.render(c);
+      _board.render(c);
 
-      _dice.render(c);
+      if (_tokens.isEmpty) _initTokens();
 
-      if (useTimeLimit) {
-        if (_shouldMove && _timerPlay.remainingTime < _ALERT_TIME)
-          _timerPlay.render(c);
-        if (_dice.canRoll && _timerDice.remainingTime <= _ALERT_TIME)
-          _timerDice.render(c);
-      }
-      if (fastMode) {
-        _tokens.forEach((t) => t.render(c));
+      if (state == StateGame.menu) {
+        _startButton.render(c);
       } else {
-        _players[1].tokens.forEach((p) => p.render(c));
-        _players[3].tokens.forEach((p) => p.render(c));
+        _restartButton.render(c);
+        _scoreBoard.render(c);
+
+        _dice.render(c);
+
+        if (useTimeLimit) {
+          if (_shouldMove && _timerPlay.remainingTime < _ALERT_TIME)
+            _timerPlay.render(c);
+          if (_dice.canRoll && _timerDice.remainingTime <= _ALERT_TIME)
+            _timerDice.render(c);
+        }
+        if (fastMode) {
+          _tokens.forEach((t) => t.render(c));
+        } else {
+          _players[1].tokens.forEach((p) => p.render(c));
+          _players[3].tokens.forEach((p) => p.render(c));
+        }
       }
     }
   }
@@ -467,7 +504,7 @@ class Ludo extends Game with TapDetector {
       _counterTimer -= _CPU_WAIT;
     }
 
-    if (_state == StateGame.playing) {
+    if (state == StateGame.playing) {
       _board.update(t);
       _dice.update(t);
 
@@ -483,10 +520,12 @@ class Ludo extends Game with TapDetector {
         }
       }
 
+      if (state == StateGame.winner) _winnerView.update(t);
+
       _tokens.forEach((p) => p.update(t));
       _scoreBoard.update(t);
 
-      if (winner != null) {
+      if (winner != null && state == StateGame.playing) {
         _endGame();
       }
     }
@@ -500,10 +539,14 @@ class Ludo extends Game with TapDetector {
     _dice?.resize();
     _timerPlay?.resize();
     _timerDice?.resize();
+    _exitButton?.resize();
 
-    if (_state == StateGame.menu) {
+    if (state == StateGame.menu) {
       _startButton?.resize();
-    } else if (_state == StateGame.playing) {
+    } else if (state == StateGame.winner) {
+      _winnerView?.resize();
+    } else if (state == StateGame.playing) {
+      _restartButton.resize();
       for (Player p in _players) {
         for (Token t in p.tokens) {
           t.spawn = _board.spawnSpots[t.id];
@@ -515,14 +558,26 @@ class Ludo extends Game with TapDetector {
   }
 
   void onTapDown(TapDownDetails d) {
-    if (_state == StateGame.menu) {
+    if (_exitButton.checkClick(d.localPosition)) {
+      _exit();
+    }
+
+    if (state == StateGame.winner) {
+      if (_startButton.checkClick(d.localPosition)) {
+        _restart();
+      }
+    } else if (state == StateGame.menu) {
       if (_startButton.checkClick(d.localPosition)) {
         _shouldMove = false;
         _dice.canRoll = true;
         startGame();
       }
-    } else if (_state == StateGame.playing) {
-      _handlePlay(d);
+    } else if (state == StateGame.playing) {
+      if (_restartButton.checkClick(d.localPosition)) {
+        _restart();
+      } else {
+        _handlePlay(d);
+      }
     }
   }
 }

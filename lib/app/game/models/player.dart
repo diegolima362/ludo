@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:ludo/components/token.dart';
+import 'package:ludo/app/game/components/token.dart';
+import 'package:ludo/app/models/models.dart';
 
 class Player {
-  final List<Token> tokens;
+  final List<TokenModel> tokens;
   final Color playerColor;
   final String name;
   final int id;
@@ -32,7 +33,7 @@ class Player {
   });
 
   bool get haveTokenInBase {
-    for (Token t in tokens) {
+    for (TokenModel t in tokens) {
       if (t.isInBase) return true;
     }
     return false;

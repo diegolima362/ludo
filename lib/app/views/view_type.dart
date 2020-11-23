@@ -1,6 +1,5 @@
 enum View {
   home,
+  highScores,
   playing,
-  preferences,
-  credits,
 }
