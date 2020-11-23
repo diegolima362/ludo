@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static Color get backgroundColor => Colors.deepPurple;
+  static Color get backgroundColor => Colors.teal;
 
   static const List<Color> colors = [
     Colors.green,
